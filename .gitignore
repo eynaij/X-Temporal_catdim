@@ -4,8 +4,15 @@
 *.npy
 *.o
 *.so
+*.pth
+*.jpg
+*png
+log*
 
+vis*/
+plot*/
 build/
 _ext/
 checkpoint/
 __pycache__/
+events/

@@ -89,6 +89,7 @@ class TemporalHelper(object):
         data_types = ['val', 'test']
         if not self.inference_only:
             data_types.append('train')
+        # import ipdb;ipdb.set_trace()
         for data_type in data_types:
             if data_type in self.config.dataset:
                 dataloader_dict[data_type] = self._build_dataloader(data_type)
@@ -149,11 +150,17 @@ class TemporalHelper(object):
 
             dataset = get_dataset(dargs, data_type, True, transform, data_length, temporal_samples)
             sampler = DistributedSampler(dataset) if self.config.gpus  > 1 else None
+            # val_loader = torch.utils.data.DataLoader(
+            #     dataset,
+            #     batch_size=dargs.batch_size, shuffle=(False if sampler else True), 
+            #     drop_last=False, num_workers=dargs.workers, 
+            #     pin_memory=True, sampler=sampler)
+            # import ipdb;ipdb.set_trace()
             val_loader = torch.utils.data.DataLoader(
                 dataset,
-                batch_size=dargs.batch_size, shuffle=(False if sampler else True), 
+                batch_size=dargs.batch_size, 
                 drop_last=False, num_workers=dargs.workers, 
-                pin_memory=True, sampler=sampler)
+                pin_memory=True)
             return val_loader
 
 
@@ -212,7 +219,7 @@ class TemporalHelper(object):
             shuffle_dataset(self.data_loaders[batch_type], self.cur_epoch)
             iterator = self.data_iterators[batch_type] = iter(self.data_loaders[batch_type])
             batch = next(iterator)
-	
+        # import ipdb;ipdb.set_trace()
         batch[0] = batch[0].cuda(non_blocking=True)
         batch[1] = batch[1].cuda(non_blocking=True)
 
@@ -366,6 +373,8 @@ class TemporalHelper(object):
 
     @torch.no_grad()
     def evaluate(self):
+        # global output_data
+        output_data = []
         batch_time = AverageMeter(0)
         losses = AverageMeter(0)
         if self.multi_class:
@@ -400,12 +409,17 @@ class TemporalHelper(object):
                 inputs[0] = inputs[0].permute(0, 2, 1, 3, 4, 5).contiguous()
                 inputs[0] = inputs[0].view(isizes[0] * dup_samples, isizes[1], -1, isizes[3], isizes[4])
 
+            # import ipdb;ipdb.set_trace()
             output = self.model(inputs[0])
             osizes = output.shape
 
             output = output.view((osizes[0] // dup_samples, -1, osizes[1]))
             output = torch.mean(output, 1)
 
+            out_data = [','.join([str(_) for _ in __]) for __ in output.tolist()]
+            # print(out_data)
+            for i in range(len(out_data)):
+                output_data.append(out_data[i])
 
             loss = self.criterion(output, inputs[1])
             num = inputs[0].size(0)
@@ -455,7 +469,8 @@ class TemporalHelper(object):
             metric = Top1Metric(final_top1, final_top5, final_loss)
 
         self.model.cuda().train()
-        return metric
+        # return metric
+        return metric, output_data
 
     def load_pretrain_or_resume(self):
         if 'resume_model' in self.config.saver:

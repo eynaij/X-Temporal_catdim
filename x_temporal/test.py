@@ -6,6 +6,8 @@ import torch
 from x_temporal.interface.temporal_helper import TemporalHelper
 from x_temporal.utils.multiprocessing import mrun
 
+import warnings
+warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser(description='X-Temporal')
 parser.add_argument('--config', type=str, help='the path of config file')
@@ -39,8 +41,10 @@ def main():
                 daemon=False)
     else:
         temporal_helper = TemporalHelper(config, inference_only=True)
-        temporal_helper.evaluate()
-
+        # temporal_helper.evaluate()
+        _, output_data =  temporal_helper.evaluate()
+    with open("/data-rbd/hejy/X-Temporal/tools/pred.csv", 'w') as f:
+        f.write('\n'.join(output_data))
 
 if __name__ == '__main__':
     torch.multiprocessing.set_start_method("forkserver")

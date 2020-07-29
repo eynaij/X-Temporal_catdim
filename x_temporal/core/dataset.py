@@ -34,7 +34,8 @@ class VideoRecord(object):
     def mlabel(self):
         labels = torch.tensor([int(x)
                                for x in self._data[2].split(',')]).long()
-        onehot = torch.FloatTensor(313)
+        # onehot = torch.FloatTensor(313)
+        onehot = torch.FloatTensor(26)
         onehot.zero_()
         onehot[labels] = 1
         return onehot
@@ -78,10 +79,12 @@ class VideoDataSet(data.Dataset):
 
 
     def _load_image(self, directory, idx):
+        # print(directory)
         if self.modality == 'RGB' or self.modality == 'RGBDiff':
             try:
                 filename = os.path.join(
                     self.root_path, directory, self.image_tmpl.format(idx))
+                # print(filename, self.root_path, directory, idx)
                 img = Image.open(filename).convert('RGB')
                 return [img]
             except Exception as e:
@@ -195,16 +198,30 @@ class VideoDataSet(data.Dataset):
             offsets = np.array([1 + int(tick / 2.0 + tick * x)
                                 for x in range(self.num_segments)])
             t_offsets.append(offsets)
-
             average_duration = (
                 record.num_frames - self.new_length + 1) // self.num_segments
+
+            # print(tick,'\n',
+            # offsets,'\n',
+            # list(range(self.num_segments)),'\n',
+            # np.multiply(list(range(self.num_segments)),average_duration),'\n',
+            # average_duration
+            # )
+
             for i in range(self.temporal_samples - 1):
                 offsets = np.multiply(list(range(self.num_segments)),
                                       average_duration) + randint(average_duration,
                                                                   size=self.num_segments)
                 t_offsets.append(offsets + 1)
-
+            
+            # print('num_segments-->', self.num_segments, '\n',
+            #       't_offsets-->', t_offsets, '\n',
+            #       'num_frame-->', record.num_frames, '\n',
+            #       'new_length-->', self.new_length)
+            
             t_offsets = np.stack(t_offsets).reshape(-1)
+            # print('t_offsets-->', t_offsets)
+            # import ipdb;ipdb.set_trace()
             return t_offsets
 
     def _get_test_indices(self, record):
@@ -298,6 +315,7 @@ class VideoDataSet(data.Dataset):
     def get(self, record, indices, path):
         images = list()
         if not self.video_source:
+            # print(path)
             for seg_ind in indices:
                 p = int(seg_ind)
                 seg_imgs = self._load_image(path, p)
@@ -315,6 +333,8 @@ class VideoDataSet(data.Dataset):
                     images.append(Image.fromarray(vr[0].asnumpy()))
 
         process_data = self.transform(images)
+        # import ipdb;ipdb.set_trace()
+        # print(path)
         if self.multi_class:
             return process_data, record.mlabel
         else:

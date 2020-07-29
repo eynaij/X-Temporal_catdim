@@ -9,23 +9,17 @@ import sys
 import subprocess
 from multiprocessing import Pool
 from tqdm import tqdm
-import glob
 
 n_thread = 100
 
 
 def vid2jpg(file_name, class_path, dst_class_path):
-    #if '.avi' not in file_name:
-    #    return
-   # print(file_name)
-    #import ipdb;ipdb.set_trace()
+    if '.avi' not in file_name:
+        return
     name, ext = os.path.splitext(file_name)
-    name = name.split('003/')[-1]
-    print(name)
     dst_directory_path = os.path.join(dst_class_path, name)
 
-    #video_file_path = os.path.join(class_path, file_name)
-    video_file_path = file_name
+    video_file_path = os.path.join(class_path, file_name)
     try:
         if os.path.exists(dst_directory_path):
             if not os.path.exists(os.path.join(
@@ -39,11 +33,9 @@ def vid2jpg(file_name, class_path, dst_class_path):
                 print('*** convert has been done: {}'.format(dst_directory_path))
                 return
         else:
-            #print('-----------------mkdir',dst_directory_path)
-            os.system('mkdir -p %s'%dst_directory_path)
-            #os.mkdir(dst_directory_path)
+            os.mkdir(dst_directory_path)
     except BaseException:
-        #print(dst_directory_path)
+        print(dst_directory_path)
         return
     cmd = 'ffmpeg -i \"{}\" -threads 1 -vf scale=-1:331 -q:v 0 \"{}/img_%05d.jpg\"'.format(
         video_file_path, dst_directory_path)
@@ -54,21 +46,16 @@ def vid2jpg(file_name, class_path, dst_class_path):
 
 def class_process(dir_path, dst_dir_path, class_name):
     print('*' * 20, class_name, '*' * 20)
-   # class_path = os.path.join(dir_path, class_name)
-    class_path = dir_path
+    class_path = os.path.join(dir_path, class_name)
     if not os.path.isdir(class_path):
         print('*** is not a dir {}'.format(class_path))
         return
 
-    #dst_class_path = os.path.join(dst_dir_path, class_name)
-    dst_class_path = dst_dir_path
-    
+    dst_class_path = os.path.join(dst_dir_path, class_name)
     if not os.path.exists(dst_class_path):
         os.mkdir(dst_class_path)
 
     vid_list = sorted(os.listdir(class_path))
-    vid_list = glob.glob(class_path+'/*/*mp4')
-    # import ipdb;ipdb.set_trace()
     p = Pool(n_thread)
     from functools import partial
     worker = partial(

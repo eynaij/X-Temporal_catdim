@@ -44,7 +44,6 @@ class TemporalShift(nn.Module):
 
 
 class InplaceShift(torch.autograd.Function):
-    # Special thanks to @raoyongming for the help to this function
     @staticmethod
     def forward(ctx, input, fold):
         # not support higher order gradient

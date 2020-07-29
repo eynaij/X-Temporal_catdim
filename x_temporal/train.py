@@ -8,6 +8,9 @@ import numpy as np
 from x_temporal.interface.temporal_helper import TemporalHelper
 from x_temporal.utils.multiprocessing import mrun
 
+import warnings
+warnings.filterwarnings("ignore")
+
 
 parser = argparse.ArgumentParser(description='X-Temporal')
 parser.add_argument('--config', type=str, help='the path of config file')
