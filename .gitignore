@@ -8,6 +8,11 @@
 *.jpg
 *png
 log*
+train*.txt
+val*.txt
+test*.txt
+pred*.txt
+*csv
 
 vis*/
 plot*/
