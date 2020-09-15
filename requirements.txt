@@ -1,4 +1,0 @@
-decord
-tqdm
-tensorboardX
-scikit-learn
