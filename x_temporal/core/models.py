@@ -95,6 +95,7 @@ class TSN(nn.Module):
                     num_class))
             self.new_fc = None
         else:
+            
             setattr(
                 self.base_model,
                 self.base_model.last_layer_name,
@@ -104,7 +105,7 @@ class TSN(nn.Module):
                 self.new_fc = nn.Linear(feature_dim, self.img_feature_dim)
             else:
                 self.new_fc = nn.Linear(feature_dim, num_class)
-
+                self.new_fc_dim = nn.Linear(feature_dim, 3)
         std = 0.001
         if self.new_fc is None:
             normal_(
@@ -122,6 +123,10 @@ class TSN(nn.Module):
             if hasattr(self.new_fc, 'weight'):
                 normal_(self.new_fc.weight, 0, std)
                 constant_(self.new_fc.bias, 0)
+            if hasattr(self.new_fc_dim, 'weight'):
+                normal_(self.new_fc_dim.weight, 0, std)
+                constant_(self.new_fc_dim.bias, 0)
+            # import os; os._exit(0)
         return feature_dim
 
     def _prepare_base_model(self, base_model, config={}):
@@ -198,20 +203,28 @@ class TSN(nn.Module):
             base_out = self.base_model(input)
 
         if self.dropout > 0:
+            base_out_dim = self.new_fc_dim(base_out)
             base_out = self.new_fc(base_out)
 
         if not self.before_softmax:
             base_out = self.softmax(base_out)
+            base_out_dim = self.softmax(base_out_dim)
 
         if self.reshape:
             if self.is_shift and self.temporal_pool:
                 base_out = base_out.view(
                     (-1, self.num_segments // 2) + base_out.size()[1:])
+                base_out_dim = base_out_dim.view(
+                    (-1, self.num_segments // 2) + base_out_dim.size()[1:])    
             else:
                 base_out = base_out.view(
                     (-1, self.num_segments) + base_out.size()[1:])
+                base_out_dim = base_out_dim.view(
+                    (-1, self.num_segments) + base_out_dim.size()[1:])
             output = self.consensus(base_out)
-            return output.squeeze(1)
+            output_dim = self.consensus(base_out_dim)
+            # return output.squeeze(1)
+            return [output.squeeze(1), output_dim.squeeze(1)]
 
     def _get_diff(self, input, keep_rgb=False):
         input_c = 3 if self.modality in ["RGB", "RGBDiff"] else 2

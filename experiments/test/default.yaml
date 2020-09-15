@@ -68,7 +68,7 @@ config:
     # pretrain_model: '/data-rbd/hejy/X-Temporal/checkpoints_pretrain/resnet50-19c8e357.pth'
     # pretrain_model: '/data-rbd/hejy/X-Temporal/experiments/test/tin_pretrain_models/tin_mit_8.pth'
     
-    # pretrain_model: '/data-rbd/hejy/X-Temporal/experiments/test/tin_pretrain_models/tin_mit_16.pth'
+    pretrain_model: '/data-rbd/hejy/X-Temporal/experiments/test/tin_pretrain_models/tin_mit_16.pth'
 
     # pretrain_model: '/data-rbd/hejy/X-Temporal/experiments/test/tin_pretrain_models/tin_k700_res101.pth'
     # pretrain_model: '/data-rbd/hejy/X-Temporal/experiments/test/tin_pretrain_models/tin_mit_res101_8.pth'

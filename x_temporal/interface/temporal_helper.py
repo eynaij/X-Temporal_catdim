@@ -25,6 +25,7 @@ from x_temporal.core.models_entry import get_model, get_augmentation
 from x_temporal.core.transforms import *
 from x_temporal.core.dataset import VideoDataSet
 
+predict_mode = True
 
 class TemporalHelper(object):
     def __init__(self, config, work_dir='./', ckpt_dict=None, inference_only=False):
@@ -79,6 +80,8 @@ class TemporalHelper(object):
             criterion = torch.nn.CrossEntropyLoss()
         elif self.config.trainer.loss_type == 'bce':
             criterion = torch.nn.BCEWithLogitsLoss()
+        elif self.config.trainer.loss_type == 'mse':
+            criterion = torch.nn.MSELoss()
         else:
             raise ValueError("Unknown loss type")
         return criterion
@@ -96,6 +99,7 @@ class TemporalHelper(object):
         return dataloader_dict
 
     def _build_dataloader(self, data_type):
+        global predict_mode
         dargs = self.config.dataset
         if dargs.modality == 'RGB':
             data_length = 1
@@ -106,7 +110,6 @@ class TemporalHelper(object):
             normalize = GroupNormalize(dargs.input_mean, dargs.input_std)
         else:
             normalize = IdentityTransform()
-
 
         if data_type == 'train':
             train_augmentation = get_augmentation(self.config)
@@ -150,17 +153,18 @@ class TemporalHelper(object):
 
             dataset = get_dataset(dargs, data_type, True, transform, data_length, temporal_samples)
             sampler = DistributedSampler(dataset) if self.config.gpus  > 1 else None
-            # val_loader = torch.utils.data.DataLoader(
-            #     dataset,
-            #     batch_size=dargs.batch_size, shuffle=(False if sampler else True), 
-            #     drop_last=False, num_workers=dargs.workers, 
-            #     pin_memory=True, sampler=sampler)
-            # import ipdb;ipdb.set_trace()
-            val_loader = torch.utils.data.DataLoader(
-                dataset,
-                batch_size=dargs.batch_size, 
-                drop_last=False, num_workers=dargs.workers, 
-                pin_memory=True)
+            if not predict_mode:
+                val_loader = torch.utils.data.DataLoader(
+                    dataset,
+                    batch_size=dargs.batch_size, shuffle=(False if sampler else True), 
+                    drop_last=False, num_workers=dargs.workers, 
+                    pin_memory=True, sampler=sampler)
+            else:
+                val_loader = torch.utils.data.DataLoader(
+                    dataset,
+                    batch_size=dargs.batch_size, 
+                    drop_last=False, num_workers=dargs.workers, 
+                    pin_memory=True)
             return val_loader
 
 
@@ -237,7 +241,13 @@ class TemporalHelper(object):
     def forward(self, batch):
         data_time = time.time() - self._last_time
         output = self.model(batch[0])
-        loss = self.criterion(output, batch[1])
+        # print(batch[1])
+        # loss = self.criterion(output, batch[1])
+        # import ipdb;ipdb.set_trace()
+        loss_cat = torch.nn.BCEWithLogitsLoss()(output[0][0], batch[1][0][:26])
+        loss_dim = torch.nn.MSELoss()(output[1][0], batch[1][0][26:29])
+        loss = loss_cat + loss_dim/10
+        
         if self.multi_class:
             mAP = self.calculate_mAP(output, batch[1])
             self._preverse_for_show = [loss.detach(), data_time, mAP]
@@ -308,6 +318,7 @@ class TemporalHelper(object):
             self.cur_epoch = int(float(iter_idx + 1) / self.epoch_iters)
             self.cur_iter = iter_idx
             inputs = self.get_batch('train')
+            # import ipdb;ipdb.set_trace()
             loss = self.forward(inputs)
 
             self.backward(loss)
@@ -373,7 +384,7 @@ class TemporalHelper(object):
 
     @torch.no_grad()
     def evaluate(self):
-        # global output_data
+        global predict_mode
         output_data = []
         batch_time = AverageMeter(0)
         losses = AverageMeter(0)
@@ -409,19 +420,28 @@ class TemporalHelper(object):
                 inputs[0] = inputs[0].permute(0, 2, 1, 3, 4, 5).contiguous()
                 inputs[0] = inputs[0].view(isizes[0] * dup_samples, isizes[1], -1, isizes[3], isizes[4])
 
-            # import ipdb;ipdb.set_trace()
             output = self.model(inputs[0])
-            osizes = output.shape
 
-            output = output.view((osizes[0] // dup_samples, -1, osizes[1]))
-            output = torch.mean(output, 1)
-
-            out_data = [','.join([str(_) for _ in __]) for __ in output.tolist()]
+            osizes = output[0].shape
+            output[0] = output[0].view((osizes[0] // dup_samples, -1, osizes[1]))
+            output[0] = torch.mean(output[0], 1)
+            osizes = output[1].shape
+            output[1] = output[1].view((osizes[0] // dup_samples, -1, osizes[1]))
+            output[1] = torch.mean(output[1], 1)
+            # print(output)
+            # import ipdb;ipdb.set_trace()
+            # for __, _ in zip(output[0].tolist(), output[1].tolist()):
+            #     out_data.append(','.join([str(_) for _ in __+___]))
+            out_data = [','.join([str(_) for _ in __+___]) for __, ___ in zip(output[0].tolist(),output[1].tolist())]
             # print(out_data)
             for i in range(len(out_data)):
                 output_data.append(out_data[i])
 
-            loss = self.criterion(output, inputs[1])
+            # loss = self.criterion(output, inputs[1])
+            loss_cat = torch.nn.BCEWithLogitsLoss()(output[0][0], inputs[1][0][:26])
+            loss_dim = torch.nn.MSELoss()(output[1][0], inputs[1][0][26:29])
+            loss = loss_cat + loss_dim/10
+
             num = inputs[0].size(0)
             losses.update(loss.item(), num)
             if self.multi_class:
@@ -469,8 +489,10 @@ class TemporalHelper(object):
             metric = Top1Metric(final_top1, final_top5, final_loss)
 
         self.model.cuda().train()
-        # return metric
-        return metric, output_data
+        if not predict_mode:
+            return metric
+        else:
+            return metric, output_data
 
     def load_pretrain_or_resume(self):
         if 'resume_model' in self.config.saver:

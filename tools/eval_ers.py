@@ -29,8 +29,8 @@ def eval(gt_file_path, pred_file_path):
         line_parts_pred = lines_pred[i].strip().split(',')
 
         score_gt = line_parts_gt[4:33]
-        score_pred = line_parts_pred[4:33]
-        # score_pred = line_parts_pred[:29]
+        # score_pred = line_parts_pred[4:33]
+        score_pred = line_parts_pred[:29]
         
         cat_score_gt = []
         cat_score_gt_pre = [float(_) for _ in score_gt[:26]]
@@ -44,7 +44,8 @@ def eval(gt_file_path, pred_file_path):
         cat_score_pred = [float(_) for _ in score_pred[:26]]
         # dim_score_pred = [float(_) for _ in score_pred[26:29]]
         
-        dim_score_gt = dim_score_pred = []
+        dim_score_gt = [float(_) for _ in score_gt[26:29]]
+        dim_score_pred = [float(_) for _ in score_pred[26:29]]
          
         cat_scores_gt.append(cat_score_gt)
         dim_scores_gt.append(dim_score_gt)
@@ -66,21 +67,23 @@ def calculate_ERS(cat_pred, cat_true, dim_pred, dim_true):
     values_roc = []
     values_r2 = []
     
+    import ipdb;ipdb.set_trace()
     cat_pred = cat_pred.T
     cat_true = cat_true.T 
     dim_pred = dim_pred.T
     dim_true = dim_true.T
+    import ipdb;ipdb.set_trace()
 
     for i in range(len(cat_pred)):
         values_ap.append(average_precision_score(cat_true[i], cat_pred[i], average='macro'))
         values_roc.append(roc_auc_score(cat_true[i], cat_pred[i], average='macro'))
-    # for i in range(len(dim_pred)):
-        # values_r2.append(r2_score(dim_true, dim_pred))
+    values_r2.append(r2_score(dim_true, dim_pred))
 
-    # ERS = (np.mean(values_r2) + ((np.mean(values_ap) + np.mean(values_roc)) / 2)) / 2    
-    ERS =(np.mean(values_ap) + np.mean(values_roc)) / 2
+    ERS = (np.mean(values_r2) + ((np.mean(values_ap) + np.mean(values_roc)) / 2)) / 2    
+    # ERS =(np.mean(values_ap) + np.mean(values_roc)) / 2
     print('map:', np.mean(values_ap))
     print('mroc:', np.mean(values_roc))
+    print('mr2:', np.mean(values_r2))
 
     return ERS
 
@@ -186,6 +189,8 @@ def vis(gt_file_path, pred_file_path):
 if __name__ == "__main__":
     # csv_file_path = "/data-rbd/hejy/BOLD/BOLD_public/annotations/train.csv"
     gt_file_path = "/data-rbd/hejy/BOLD/BOLD_public/annotations/val.csv"
-    pred_file_path = "/data-rbd/hejy/X-Temporal/tools/pred.csv"
+    # pred_file_path = "/data-rbd/hejy/X-Temporal/tools/pred.csv"
+    # pred_file_path = "/data-rbd/hejy/X-Temporal_dim/tools/sedensenet_val_26_res.csv"
+    pred_file_path = "/data-rbd/hejy/X-Temporal_dim/tools/pred_catdim.csv"
     eval(gt_file_path, pred_file_path)
     # vis(gt_file_path, pred_file_path)

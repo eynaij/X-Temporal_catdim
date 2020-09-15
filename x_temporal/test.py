@@ -43,7 +43,7 @@ def main():
         temporal_helper = TemporalHelper(config, inference_only=True)
         # temporal_helper.evaluate()
         _, output_data =  temporal_helper.evaluate()
-    with open("/data-rbd/hejy/X-Temporal/tools/pred.csv", 'w') as f:
+    with open("/data-rbd/hejy/X-Temporal_dim/tools/pred_catdim.csv", 'w') as f:
         f.write('\n'.join(output_data))
 
 if __name__ == '__main__':

@@ -42,9 +42,10 @@ def csv2txt(csv_file_path, txt_file_path):
         frame_dir = os.path.join('/data-rbd/hejy/BOLD/frames_test/', video_name)
         assert os.path.exists(frame_dir), 'frame_dir doesnot exists'
         frame_num = len(os.listdir(frame_dir))
-        output.append('%s %d %s' %(video_name, frame_num, ','.join(cat_score_idx)))
+        output.append('%s %d %s' %(video_name, frame_num, ','.join(cat_score_idx + vad_score)))
+        # output.append('%s %d %s' %(video_name, frame_num, ','.join(cat_score_idx)))
         var_info = [cat_score_idx, frame_dir,video_name]
-        vis(var_info)
+        #vis(var_info)
 
     with open(txt_file_path, 'w') as f:
         f.write('\n'.join(output))   
@@ -145,8 +146,9 @@ def vis(var_info):
 
 if __name__ == "__main__":
     csv_file_path = "/data-rbd/hejy/BOLD/BOLD_public/annotations/train.csv"
-    txt_file_path =  "train.txt"
+    txt_file_path =  "train_cat_dim.txt"
     # csv_file_path = "/data-rbd/hejy/BOLD/BOLD_public/annotations/val.csv"
-    # txt_file_path =  "val.txt"
-    csv2output_eval(csv_file_path)
-    # csv2txt(csv_file_path, txt_file_path)
+    # txt_file_path =  "val_cat_dim.txt"
+    # csv2output_eval(csv_file_path)
+    csv2txt(csv_file_path, txt_file_path)
+

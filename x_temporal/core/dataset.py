@@ -32,13 +32,27 @@ class VideoRecord(object):
 
     @property
     def mlabel(self):
-        labels = torch.tensor([int(x)
-                               for x in self._data[2].split(',')]).long()
+        labels_cat = torch.tensor([int(x)
+                               for x in self._data[2].split(',')[:-3]]).long()
+        labels_dim = torch.tensor([float(x)
+                               for x in self._data[2].split(',')[-3:]])                       
         # onehot = torch.FloatTensor(313)
         onehot = torch.FloatTensor(26)
         onehot.zero_()
-        onehot[labels] = 1
-        return onehot
+        onehot[labels_cat] = 1
+        # labels = onehot.numpy().tolist() + labels_dim.numpy().tolist()
+        
+        labels = torch.cat((onehot, labels_dim), 0)
+        # print(onehot,'\n',labels_dim, labels)
+        return labels
+    # def mlabel(self):
+    #     labels = torch.tensor([int(x)
+    #                            for x in self._data[2].split(',')]).long()
+    #     # onehot = torch.FloatTensor(313)
+    #     onehot = torch.FloatTensor(26)
+    #     onehot.zero_()
+    #     onehot[labels] = 1
+    #     return onehot
 
 
 class VideoDataSet(data.Dataset):
@@ -157,11 +171,15 @@ class VideoDataSet(data.Dataset):
                     self.num_segments)]
             return np.array(offsets) + 1
         else:  # normal sample
+            
             average_duration = (
                 record.num_frames - self.new_length + 1) // self.num_segments
             if average_duration > 0:
+                
                 offsets = np.multiply(list(range(self.num_segments)), average_duration) + randint(average_duration,
                                                                                                   size=self.num_segments)
+                # print('----->',offsets)
+                # os._exit(0)
             elif record.num_frames > self.num_segments:
                 offsets = np.sort(
                     randint(
@@ -192,6 +210,7 @@ class VideoDataSet(data.Dataset):
                     record.num_frames for idx in range(self.num_segments)]
             return np.array(offsets) + 1
         else:
+            # import os; os._exit(0)
             t_offsets = []
             tick = (record.num_frames - self.new_length + 1) / \
                 float(self.num_segments)
@@ -256,7 +275,8 @@ class VideoDataSet(data.Dataset):
 
     def __getitem__(self, index):
         record = self.video_list[index]
-
+        # print('---------------->',self.video_source)
+        
         # check this is a legit video folder
         if self.video_source:
             full_path = os.path.join(self.root_path, record.path)
@@ -278,7 +298,7 @@ class VideoDataSet(data.Dataset):
                 file_name = self.image_tmpl.format(int(record.path), 'x', 1)
                 full_path = os.path.join(
                     self.root_path, '{:06d}'.format(int(record.path)), file_name)
-            else:
+            else:               
                 file_name = self.image_tmpl.format(1)
                 full_path = os.path.join(
                     self.root_path, record.path, file_name)
@@ -305,7 +325,8 @@ class VideoDataSet(data.Dataset):
                     full_path = os.path.join(
                         self.root_path, record.path, file_name)
 
-        if not self.test_mode:
+        if not self.test_mode: 
+                       
             segment_indices = self._sample_indices(
                 record) if self.random_shift else self._get_val_indices(record)
         else:
@@ -336,6 +357,7 @@ class VideoDataSet(data.Dataset):
         # import ipdb;ipdb.set_trace()
         # print(path)
         if self.multi_class:
+            # print(record.mlabel)
             return process_data, record.mlabel
         else:
             return process_data, record.label
